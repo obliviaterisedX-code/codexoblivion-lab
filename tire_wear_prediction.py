@@ -109,7 +109,54 @@ plt.show()
 
 
 # --------------------------------
+# Example: FastF1 Grip Predictor
+# --------------------------------
 
+import fastf1
+import pandas as pd
+from sklearn.linear_model import LinearRegression
+
+# Step 1: Enable FastF1 cache (so data loads faster next time)
+fastf1.Cache.enable_cache('cache')  
+
+# Step 2: Load a race session (example: 2025 British GP, Race)
+session = fastf1.get_session(2025, 'Silverstone', 'R')
+session.load()
+
+# Step 3: Pick a driver (example: VER for Verstappen)
+laps = session.laps.pick_driver('VER')
+
+# Step 4: Build dataset
+# Use lap number, track temp, and lap time delta as grip proxy
+data = []
+best_lap = laps['LapTime'].min()
+
+for _, lap in laps.iterrows():
+    lap_num = lap['LapNumber']
+    track_temp = lap['TrackTemp']
+    # Grip proxy: slower lap time = less grip
+    grip = 100 - ((lap['LapTime'] - best_lap).total_seconds() * 5)  
+    data.append([lap_num, track_temp, grip])
+
+df = pd.DataFrame(data, columns=["Lap", "TrackTemp", "Grip"])
+
+# Step 5: Train regression model
+X = df[["Lap", "TrackTemp"]]
+y = df["Grip"]
+
+model = LinearRegression()
+model.fit(X, y)
+
+# Step 6: Predict grip at Lap 20, Track Temp 35°C
+predicted = model.predict([[20, 35]])
+print(f"Lap 20 grip: {predicted[0]:.1f}%")
+
+# Step 7: Pit warning if grip below threshold
+threshold = 70
+if predicted[0] < threshold:
+    print("Pit in 3 laps!")
+else:
+    print("Tires are still good")
 
 
 
